@@ -21,7 +21,7 @@ def printRecord(time, rdd):
 	pandadf.columns = new_header
 	print(pandadf)
 	#pandadf.to_csv('panda_test_file.csv', index=False)
-	#v.process(pandadf)
+	v.process(pandadf)
 
 lines.foreachRDD(printRecord)
 
