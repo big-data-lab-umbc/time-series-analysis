@@ -4,25 +4,35 @@ import numpy as np
 import math as m
 from sklearn.metrics import mean_squared_error
 import datetime
+from random import seed
+from random import random
 
 
 
-df = pd.read_csv("panda_test_file.csv")
+#df = pd.read_csv("panda_test_file.csv")
 
 #df.dtypes
 
 def process(df):
 
+    #new_header = df.iloc[0]
+    #df = df[1:]
+    #df.columns = new_header
+    df.columns = ['Date_Time', 'Rt_avg', 'Q_avg', 'Rs_avg', 'Rm_avg', 'Ws_avg', 'Nu_avg']
+
     df['Date_Time'] = pd.to_datetime(df.Date_Time , format = '%m/%d/%Y %H:%M')
     data = df.drop(['Date_Time'], axis=1)
     data.index = df.Date_Time
     print('date time indexing done!-------------------------------------')
-
+    seed(1)
     cols = data.columns
     for j in cols:
         for i in range(0,len(data)):
            if pd.isnull(data[j][i]):
                data[j][i] = data[j][i-1]
+           elif data[j][i] == '0':
+               data[j][i] = random()		
+	       	
 
     #creating the train and validation set
     train = data[:int(0.8*(len(data)))]
@@ -45,7 +55,7 @@ def process(df):
     #open file to write results
     currentDT = datetime.datetime.now()
     results_fileName = 'Predictions_at_' + currentDT.strftime("%Y-%m-%d %H:%M:%S")
-    f = open("/home/chai2/jianwu_common/Time-Series-IoT-Analytics-Chaitanya/spark-2.4.0-bin-hadoop2.7/%s.txt" %results_fileName, "a+")
+    f = open("/home/chai2/jianwu_common/Time-Series-IoT-Analytics-Chaitanya/spark-2.4.0-bin-hadoop2.7/TSA-Predictions/%s.txt" %results_fileName, "a+")
     
     
     #converting predictions to dataframe

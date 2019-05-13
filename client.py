@@ -22,14 +22,14 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         i = 0
         with open('Only-R80711-SC.csv', 'r') as fo:
             for line in fo:
-                if i <= 10:
+                if i <= 100:
                     print(line)
                     self.request.sendall(bytes(line, 'utf-8'))
                     i = i + 1
                 else:
                     i = 0
-                    break #time.sleep(10)
-                    socketserver.server_close()
+                    time.sleep(10)
+                    #socketserver.server_close()
         #print 'Done sending'
         
 
