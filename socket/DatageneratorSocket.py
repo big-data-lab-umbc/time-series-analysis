@@ -17,6 +17,7 @@ import datetime as dt
 import socketserver
 import sys
 
+
 class MyTCPHandler(socketserver.BaseRequestHandler):
     """
     The RequestHandler class for our server.
@@ -29,7 +30,7 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         print('Streaming...')
-        k = 100000
+        k = 10000000
         np.set_printoptions(suppress=True)
         noise = np.random.normal(0, 1, k)
         noise2 = np.random.normal(0, 1, k)
@@ -41,19 +42,26 @@ class MyTCPHandler(socketserver.BaseRequestHandler):
         source2[2] = noise2[2]
         i = 0
         for x in range(3, k):
-            if i <= 10:
+            # if i < 10:
 
                 source1[x] = 0.95 * math.sqrt(2) * source1[x - 1] - 0.90 * source1[x - 2] + noise[x]
                 source2[x] = 0.5*source2[x-2] + noise2[x]
                 msg = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ',' + str(source1[x]) + ',' + str(source2[x]) + "\n"
                 # print(msg)
+                # Adding source Data ###
+                # source_fileName = 'socket_source_' + dt.datetime.now().strftime("%Y-%m-%d")
+                # f = open("/Users/arjunpandya/PycharmProjects/VARonStreams/Source/%s.csv" % source_fileName, "a+")
+                # f.write(msg)
+                # f.close()
+                # Adding source Data ###
                 self.request.sendall(bytes(msg, 'utf-8'))
                 i += 1
-            else:
-                i = 0
+            # else:
+            #     i = 0
                 sleep(1)
 
 if __name__ == '__main__':
+
     # if len(sys.argv) != 3:
     #     print("Usage: DStreamSocket.py <hostname> <port>", file=sys.stderr)
     #     sys.exit(-1)
