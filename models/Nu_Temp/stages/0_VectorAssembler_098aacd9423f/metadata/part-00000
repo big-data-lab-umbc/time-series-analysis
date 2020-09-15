@@ -1,0 +1,1 @@
+{"class":"org.apache.spark.ml.feature.VectorAssembler","timestamp":1600060534123,"sparkVersion":"2.4.4","uid":"VectorAssembler_098aacd9423f","paramMap":{"outputCol":"features","inputCols":["RT_Tempt-1","Nu_Tempt-1","RT_Tempt-2","Nu_Tempt-2"]},"defaultParamMap":{"handleInvalid":"error","outputCol":"VectorAssembler_098aacd9423f__output"}}
