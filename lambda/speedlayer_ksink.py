@@ -21,8 +21,9 @@ os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages org.apache.spark:spark-sql-kafka
 
 def predict(df, epoch_id):
     split_col = F.split(df.value, ',')
-    df = df.withColumn('TimeStamp', F.to_timestamp(F.regexp_replace(split_col.getItem(0), '"', ''),
-                                                   'yyyy-mm-dd HH:mm:ssss'))
+    # df = df.withColumn('TimeStamp', F.to_timestamp(F.regexp_replace(split_col.getItem(0), '"', ''),
+    #                                                'yyyy-mm-dd HH:mm:ss.SSS'))
+    df = df.withColumn('TimeStamp', F.regexp_replace(split_col.getItem(0), '"', '').cast(tp.TimestampType()))
     df = df.withColumn('RT_Temp', split_col.getItem(1).cast(tp.DoubleType()))
     df = df.withColumn('Nu_Temp', F.regexp_replace(split_col.getItem(2), '"', '').cast(tp.DoubleType()))
     df = df.drop('value')
@@ -35,28 +36,30 @@ def predict(df, epoch_id):
                                             col("RT_Temp"),lit(","),
                                             col("RT_Temp_Predict"),lit(","),
                                             col("Nu_Temp"), lit(","),
-                                            col("Nu_Temp_Predict")
+                                            col("Nu_Temp_Predict"), lit(","),
+                                            col("RMSE_Score")
                                             )).cast(tp.StringType()))
         ds = df_final.select('value')
-        ds.show(5)
+        # ds.show(5)
         # Sending each row of dataframe on Kafka message
         print('Now sending Kafka Message')
         ds.selectExpr("CAST(value AS STRING)")\
             .write\
             .format("kafka")\
             .option("kafka.bootstrap.servers", broker)\
-            .option("topic", "speed_predictoins")\
+            .option("topic", sink_topic)\
             .save()
         # Saving the predicted values on Hive for recording purpose
         # df_final.write.saveAsTable(name='tsa.speed_predictions', format='hive', mode='append')
 
-if len(sys.argv) != 4:
+if len(sys.argv) != 5:
     print("Usage: saprk-submit SStreamKafka.py <hostname:port> <topic>", file=sys.stderr)
     sys.exit(-1)
 
 broker = sys.argv[1]
-topic = sys.argv[2]
-batch_size = str(sys.argv[3]) + ' seconds'
+source_topic = sys.argv[2]
+sink_topic = sys.argv[3]
+batch_size = str(sys.argv[4]) + ' seconds'
 
 spark = SparkSession.builder.appName("TSF_SpeedLayer").enableHiveSupport().getOrCreate()
 
@@ -65,7 +68,7 @@ lines = spark \
     .format("kafka") \
     .option("kafka.bootstrap.servers", broker) \
     .option("startingOffsets", "earliest") \
-    .option("subscribe", topic) \
+    .option("subscribe", source_topic) \
     .load()
 
 model_val = None

@@ -14,21 +14,24 @@ os.environ['PYSPARK_SUBMIT_ARGS'] = "--packages org.apache.spark:spark-sql-kafka
 # predictions on incoming streams
 def weighted_predict(df, epoch_id):
     split_col = F.split(df.value, ',')
-    df = df.withColumn('TimeStamp', F.to_timestamp(F.regexp_replace(split_col.getItem(0), '"', ''),
-                                                   'yyyy-mm-dd HH:mm:ssss'))
+    # df = df.withColumn('TimeStamp', F.to_timestamp(F.regexp_replace(split_col.getItem(0), '"', ''),
+    #                                                'yyyy-mm-dd HH:mm:ss.SSS'))
+    df = df.withColumn('TimeStamp', F.regexp_replace(split_col.getItem(0), '"', '').cast(tp.TimestampType()))
     df = df.withColumn('RT_Temp', split_col.getItem(1).cast(tp.DoubleType()))
     df = df.withColumn('RT_Temp_Predict', split_col.getItem(2).cast(tp.DoubleType()))
     df = df.withColumn('Nu_Temp', split_col.getItem(3).cast(tp.DoubleType()))
-    df = df.withColumn('Nu_Temp_Predict', F.regexp_replace(split_col.getItem(4), '"', '').cast(tp.DoubleType()))
+    df = df.withColumn('Nu_Temp_Predict', split_col.getItem(4).cast(tp.DoubleType()))
+    df = df.withColumn('RMSE_Score', F.regexp_replace(split_col.getItem(4), '"', '').cast(tp.DoubleType()))
     df = df.drop('value')
-    sp_df = df.select('TimeStamp','RT_Temp','RT_Temp_Predict','Nu_Temp','Nu_Temp_Predict')\
-        .where("topic='speed_predictoins'")
-    bt_df = df.select('TimeStamp', 'RT_Temp', 'RT_Temp_Predict', 'Nu_Temp', 'Nu_Temp_Predict')\
-        .where("topic='batch_predictoins'")
-    print("Speed Layer Predictions....")
-    sp_df.show(5)
-    print("Batch Layer Predictions....")
-    bt_df.show(5)
+    # df.show()
+    sp_df = df.select('TimeStamp','RT_Temp','RT_Temp_Predict','Nu_Temp','Nu_Temp_Predict','RMSE_Score')\
+        .where("topic='{}'".format(str(sp_topic)))
+    bt_df = df.select('TimeStamp','RT_Temp','RT_Temp_Predict','Nu_Temp','Nu_Temp_Predict','RMSE_Score')\
+        .where("topic='{}'".format(str(bl_topic)))
+    # print("Speed Layer Predictions....")
+    # sp_df.show(5)
+    # print("Batch Layer Predictions....")
+    # bt_df.show(5)
 
     df_final = (
         sp_df.alias('sp').join(bt_df.alias('bt'), on=sp_df['TimeStamp'] == bt_df['TimeStamp'],
@@ -36,45 +39,43 @@ def weighted_predict(df, epoch_id):
                                                             'sp.RT_Temp',
                                                             'sp.RT_Temp_Predict as Speed_RT_Temp',
                                                             'bt.RT_Temp_Predict as Batch_RT_Temp',
-                                                            '(0.2*sp.RT_Temp_Predict + 0.8*bt.RT_Temp_Predict) as Y_RT_Temp',
+                                                            '({}*sp.RT_Temp_Predict + {}*bt.RT_Temp_Predict) as Wt_RT_Temp'.format(str(s_wt),str(b_wt)),
                                                             'sp.Nu_Temp',
                                                             'sp.Nu_Temp_Predict as Speed_Nu_Temp',
                                                             'bt.Nu_Temp_Predict as Batch_Nu_Temp',
-                                                            '(0.2*sp.Nu_Temp_Predict + 0.8*bt.Nu_Temp_Predict) as Y_Nu_Temp'
+                                                            '({}*sp.Nu_Temp_Predict + {}*bt.Nu_Temp_Predict) as Wt_Nu_Temp'.format(str(s_wt),str(b_wt)),
+                                                            'sp.RMSE_Score as Speed_RMSE',
+                                                            'bt.RMSE_Score as Batch_RMSE',
                                                             )
                 )
-    df_final.show(5)
+    # df_final.show(5)
     # df = spark.sql("select * FROM default.turbine")
     df_final.write.saveAsTable(name='tsa.serving_predictions', format='hive', mode='append')
 
 # host = 'localhost'
 # port = 8885
-if len(sys.argv) != 4:
-    print("Usage: saprk-submit SStreamKafka.py <hostname:port> <topic>", file=sys.stderr)
+if len(sys.argv) != 7:
+    print("Usage: saprk-submit SStreamKafka.py <hostname:port> <speed topic> "
+          "<batch topic> <batch size> <weight for batch prediction> <weight for speed prediction>", file=sys.stderr)
     sys.exit(-1)
 
 broker = sys.argv[1]
-topic = sys.argv[2]
-batch_size = str(sys.argv[3]) + ' seconds'
+sp_topic = sys.argv[2]
+bl_topic = sys.argv[3]
+batch_size = str(sys.argv[4]) + ' seconds'
+s_wt = sys.argv[5] # Weight assigned to prediction from Speed Layer
+b_wt = sys.argv[6] # Weight assigned to prediction from Batch Layer
 
 spark = SparkSession.builder.appName("TSF_ServingLayer").enableHiveSupport().getOrCreate()
 
-# batch_predictoins = spark \
-#     .readStream \
-#     .format("kafka") \
-#     .option("kafka.bootstrap.servers", broker) \
-#     .option("startingOffsets", "earliest") \
-#     .option("subscribe", 'batch_predictoins') \
-#     .load()
-
-speed_predictoins = spark \
+predictions = spark \
     .readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", broker) \
-    .option("startingOffsets", "latest") \
-    .option("subscribe", 'speed_predictoins,batch_predictoins') \
+    .option("startingOffsets", "earliest") \
+    .option("subscribe", str(sp_topic)+','+str(bl_topic)) \
     .load()
 model_val = None
 spark.sparkContext.setLogLevel("FATAL")
-query = speed_predictoins.writeStream.trigger(processingTime=batch_size).foreachBatch(weighted_predict).start()
+query = predictions.writeStream.trigger(processingTime=batch_size).foreachBatch(weighted_predict).start()
 query.awaitTermination()
