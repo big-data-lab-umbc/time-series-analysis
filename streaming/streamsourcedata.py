@@ -29,9 +29,11 @@ if __name__ == '__main__':
     f = open(src_file,"+r")
     lines = f.readlines()
     for line in lines:
-        msg = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ',' + line
+        msg = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")  + ',' + line
+        msg = msg.replace("\n","")
+        # print()
         producer = KafkaProducer(bootstrap_servers=[broker],
                              value_serializer=lambda x:
                              dumps(x).encode('utf-8'))
         producer.send(topic, value=msg)
-        sleep(1)
+        # sleep(1)

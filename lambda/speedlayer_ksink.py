@@ -42,7 +42,7 @@ def predict(df, epoch_id):
         ds = df_final.select('value')
         # ds.show(5)
         # Sending each row of dataframe on Kafka message
-        print('Now sending Kafka Message')
+        print('Now sending Message on Kafka topic',sink_topic)
         ds.selectExpr("CAST(value AS STRING)")\
             .write\
             .format("kafka")\

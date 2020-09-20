@@ -36,19 +36,19 @@ def weighted_predict(df, epoch_id):
     df_final = (
         sp_df.alias('sp').join(bt_df.alias('bt'), on=sp_df['TimeStamp'] == bt_df['TimeStamp'],
                                     how='inner').selectExpr('sp.TimeStamp as TS',
-                                                            'sp.RT_Temp',
-                                                            'sp.RT_Temp_Predict as Speed_RT_Temp',
-                                                            'bt.RT_Temp_Predict as Batch_RT_Temp',
-                                                            '({}*sp.RT_Temp_Predict + {}*bt.RT_Temp_Predict) as Wt_RT_Temp'.format(str(s_wt),str(b_wt)),
-                                                            'sp.Nu_Temp',
-                                                            'sp.Nu_Temp_Predict as Speed_Nu_Temp',
-                                                            'bt.Nu_Temp_Predict as Batch_Nu_Temp',
-                                                            '({}*sp.Nu_Temp_Predict + {}*bt.Nu_Temp_Predict) as Wt_Nu_Temp'.format(str(s_wt),str(b_wt)),
-                                                            'sp.RMSE_Score as Speed_RMSE',
-                                                            'bt.RMSE_Score as Batch_RMSE',
+                                                            'round(sp.RT_Temp,3) as RT_Temp',
+                                                            'round(sp.RT_Temp_Predict,3) as Speed_RT_Temp',
+                                                            'round(bt.RT_Temp_Predict,3) as Batch_RT_Temp',
+                                                            'round(({}*sp.RT_Temp_Predict + {}*bt.RT_Temp_Predict),3) as Wt_RT_Temp'.format(str(s_wt),str(b_wt)),
+                                                            'round(sp.Nu_Temp,3) as Nu_Temp',
+                                                            'round(sp.Nu_Temp_Predict,3) as Speed_Nu_Temp',
+                                                            'round(bt.Nu_Temp_Predict,3) as Batch_Nu_Temp',
+                                                            'round(({}*sp.Nu_Temp_Predict + {}*bt.Nu_Temp_Predict),3) as Wt_Nu_Temp'.format(str(s_wt),str(b_wt)),
+                                                            'round(sp.RMSE_Score,3) as Speed_RMSE',
+                                                            'round(bt.RMSE_Score,3) as Batch_RMSE'
                                                             )
                 )
-    # df_final.show(5)
+    df_final.show(5)
     # df = spark.sql("select * FROM default.turbine")
     df_final.write.saveAsTable(name='tsa.serving_predictions', format='hive', mode='append')
 

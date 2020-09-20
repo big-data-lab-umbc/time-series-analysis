@@ -38,7 +38,7 @@ def recordstream(df, epoch_id):
     if len(dfp.take(1)) != 0:
         # print('Calling Predictions & Model path is',g_model)
         df_final = fitVar(2,dfp,g_model)
-        df_final.show(5)
+        # df_final.show(5)
         # Converting selective columns from prediction dataframe to single column dataframe value
         df_final = df_final.withColumn('value',(F.concat(col("TS"),lit(","),
                                             col("RT_Temp"),lit(","),
@@ -48,9 +48,9 @@ def recordstream(df, epoch_id):
                                             col("RMSE_Score")
                                             )).cast(tp.StringType()))
         ds = df_final.select('value')
-        ds.show(5)
+        # ds.show(5)
         # Sending each row of dataframe on Kafka message
-        print('Now sending Kafka Message')
+        print('Now sending Message on Kafka topic',sink_topic)
         ds.selectExpr("CAST(value AS STRING)")\
             .write\
             .format("kafka")\
