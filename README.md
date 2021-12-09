@@ -16,3 +16,8 @@
 -  Apache Kafka 2.11 or above
 -  Python 3.6 or above
 -  Pyspark 2.4 or above
+
+### Publication
+If you make use of this code in your own work, please cite our paper:
+
+Arjun Pandya, Oluwatobiloba Odunsi, Chen Liu, Alfredo Cuzzocrea, Jianwu Wang. Adaptive and Efficient Streaming Time Series Forecasting with Lambda Architecture and Spark. In Proceedings of the 2020 IEEE International Conference on Big Data (BigData 2020), pages 5182-5190, IEEE, 2020.
